@@ -2,12 +2,12 @@
 from scraping import real_time_price
 import pandas as pd
 import datetime
-Crypto=['btc','eth','ltc', 'doge', 'xpr', 'ada', 'etc']
+Crypto=['btc','eth','ltc', 'doge', 'bch', 'zec', 'etc']
 while(True):
     price=[]
     col=[]
     info=[]
-    time_stamp=datetime.datetime.now()-datetime.timedelta(hours=1)
+    time_stamp=datetime.datetime.now()#-datetime.timedelta(hours=1)
     time_stamp=time_stamp.strftime("%Y-%m-%d %H:%M:%S")
     
     for crypto_code in Crypto:

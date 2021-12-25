@@ -8,10 +8,12 @@ from mplfinance.original_flavor import candlestick_ohlc
 import datetime
 import math
 import warnings
+import requests
+from bs4 import BeautifulSoup
 
 # %%
 warnings.simplefilter(action='ignore', category=FutureWarning)
-Crypto=['BTC','ETH','LTC', 'DOGE', 'XPR', 'ADA', 'ETC']
+Crypto=['BTC','ETH','LTC', 'DOGE', 'BCH', 'ZEC', 'ETC']
 fig=plt.figure() #figsize=(50,25)
 fig.set_size_inches(15.5, 8.5)
 fig.patch.set_facecolor('#121416')
@@ -41,9 +43,11 @@ def subplot_plot(ax, stock_code, data, latest_price, latest_change, pattern, ran
     ymin=data['close'].min()
     ymax=data['close'].max()
     ystd=data['close'].std()
-    if not math.isnan(ymax) and ymax!=0:
-        ax.set_ylim([ymin-ystd*0.5, ymax+ystd*3])
-        
+    if not math.isnan(ymax) and not math.isnan(ystd) and ymax!=0:
+        try:
+            ax.set_ylim([ymin-ystd*0.5, ymax+ystd*3])
+        except ValueError:
+            print('set y limit later with more data')           
     ax.text(0.02,0.95,stock_code, transform=ax.transAxes,color='#FFBF00', fontsize=11,fontweight='bold',
     horizontalalignment='left', verticalalignment='top') 
        
@@ -114,6 +118,7 @@ def read_data_ohlc(filename, stock_code, usecols):
 
     df_vol=df['volume'].resample('1Min').mean()
     data=df[stock_code].resample('1Min').ohlc()
+
     data['time']=data.index
     data['time']=pd.to_datetime(data['time'],format='%Y-%m-%d %H:%M:%S')
     data['MA5']=data['close'].rolling(5).mean()
@@ -134,16 +139,9 @@ def read_data_ohlc(filename, stock_code, usecols):
     
 
 filename='realtime_data.csv'
-data, latest_price, latest_change, pattern, range52, volume=\
-    read_data_ohlc(filename,Crypto[0].lower(), [1,2,3,4,5,6])
+# data, latest_price, latest_change, pattern, range52, volume=\
+#     read_data_ohlc(filename,Crypto[0].lower(), [1,2,3,4,5,6])
 
-candle_counter=range(len(data['open'])-1)
-ohlc=[]
-for candle in candle_counter:
-    append_me=candle_counter[candle],data['open'][candle],  \
-        data['high'][candle], data['low'][candle], \
-            data['close'][candle]   
-    ohlc.append(append_me)
 
 #%%
 
@@ -151,7 +149,15 @@ for candle in candle_counter:
 def animate(i): 
     data, latest_price, latest_change, pattern, range52, volume=\
     read_data_ohlc(filename,Crypto[0].lower(), [1,2,3,4,5,6])
+    candle_counter=range(len(data['open'])-1)
+    ohlc=[]
+    for candle in candle_counter:
+        append_me=candle_counter[candle],data['open'][candle],  \
+            data['high'][candle], data['low'][candle], \
+                data['close'][candle]   
+        ohlc.append(append_me)
     ax1.clear()
+    
     candlestick_ohlc(ax1,ohlc,width=0.4,colorup='#18b800', colordown='#ff3503')
     ax1.plot(data['MA5'], color='pink', linestyle='-', linewidth=1, label='5 mins SMA')
     ax1.plot(data['MA10'], color='orange', linestyle='-', linewidth=1, label='10 mins SMA')
@@ -174,26 +180,49 @@ def animate(i):
                 fontweight='bold', horizontalalignment='center', verticalalignment='center')
     ax1.text(0.5,1.05, latest_change, transform=ax1.transAxes, color=colorcode, fontsize=12, 
                 fontweight='bold', horizontalalignment='center', verticalalignment='center')
-    ax1.text(0.8,1.05, '15min SMA :', transform=ax1.transAxes, color='white', fontsize=12, 
-                fontweight='bold', horizontalalignment='center', verticalalignment='center')
+
+    url='https://www.coinwarz.com/mining/bitcoin/difficulty-chart'
+    r=requests.get(url)
+    soup = BeautifulSoup(r.text, 'html.parser')
+    text=soup.find('p', {'class':'small muted'}).text
+    dflty_btc=text[30:37]
+    
+    url='https://www.coinwarz.com/cryptocurrency'
+    r=requests.get(url)
+    soup = BeautifulSoup(r.text, 'html.parser')
+    text1=soup.find('div', {'style':'float: left; min-width: 200px;'}).find('div', {'style':'margin-bottom:10px;'}).text
+    rank1=text1.replace(' ','').replace('\n','').replace('\r', '')
+    profit1=soup.find('span', {'style':'font-size:36px; font-weight:bold;color:#000;'}).text
+    
+    ax1.text(1.3, 1.05,'Top Mining Profit :'+rank1+' '+profit1, transform=ax1.transAxes, color='white', fontsize=10, fontweight='bold',
+             horizontalalignment='center', verticalalignment='center')
+    
+    ax1.text(0.65,1.1, 'Mining Difficulty:', transform=ax1.transAxes, color='white', fontsize=12, 
+                fontweight='bold', horizontalalignment='left', verticalalignment='center')
+    
+    ax1.text(0.9,1.1, text[30:37], transform=ax1.transAxes, color='white', fontsize=12, 
+                fontweight='bold', horizontalalignment='left', verticalalignment='center')
+    
+    
     if 'Buy' in pattern:
         colorcode='#18b800'
     elif 'Sell' in pattern:
         colorcode='#ff3503'
     else:
         colorcode='white'
-
-    
-    ax1.text(0.95,1.05, pattern, transform=ax1.transAxes, color=colorcode, fontsize=12, 
-                fontweight='bold', horizontalalignment='center', verticalalignment='center')
-    ax1.text(0.7,0.95, '52 week range', transform=ax1.transAxes, color='white', fontsize=10, 
+    ax1.text(0.65,1.05, '15min SMA :', transform=ax1.transAxes, color='white', fontsize=12, 
                 fontweight='bold', horizontalalignment='left', verticalalignment='center')
-    ax1.text(0.7,0.9, range52, transform=ax1.transAxes, color='white', fontsize=10, 
+    
+    ax1.text(0.9,1.05, pattern, transform=ax1.transAxes, color=colorcode, fontsize=12, 
+                fontweight='bold', horizontalalignment='left', verticalalignment='center')
+    ax1.text(0.75,0.95, 'Day range', transform=ax1.transAxes, color='white', fontsize=10, 
+                fontweight='bold', horizontalalignment='left', verticalalignment='center')
+    ax1.text(0.75,0.9, range52, transform=ax1.transAxes, color='white', fontsize=10, 
                 fontweight='bold', horizontalalignment='left', verticalalignment='center')
 
     time_stamp=datetime.datetime.now()
     time_stamp=time_stamp.strftime('%Y-%m-%d %H:%M:%S')
-    ax1.text(1.3, 1.05,time_stamp, transform=ax1.transAxes, color='white', fontsize=12, fontweight='bold',
+    ax1.text(1.3, 1.1,time_stamp, transform=ax1.transAxes, color='white', fontsize=12, fontweight='bold',
              horizontalalignment='center', verticalalignment='center')
     ax1.grid(True, color='grey', linestyle='-', which='major', axis='both', linewidth=0.3)
     ax1.set_xticklabels([])
@@ -244,8 +273,8 @@ def animate(i):
     ax9.axes.yaxis.set_visible(False)
     ax9.set_ylim([-5, 105])
     ax9.axhline(30, linestyle='-', color='green', linewidth=0.5)
-    ax9.axhline(70,linestyle='-', color='white', linewidth=0.5)
-    ax9.axhline(50, linestyle='-', color='red', linewidth=0.5)
+    ax9.axhline(50,linestyle='-', color='white', linewidth=0.5)
+    ax9.axhline(70, linestyle='-', color='red', linewidth=0.5)
     ax9.plot(data['x_axis'], data['RSI'], color='#08a0e9',linewidth=1.5)
     ax9.text(0.01,0.95,'RSI(14):'+str(round(data['RSI'].iloc[-1], 2)), transform=ax9.transAxes, color='white',
              fontsize=10, fontweight='bold', horizontalalignment='left', verticalalignment='top')
@@ -259,6 +288,10 @@ def animate(i):
     ax9.xaxis.set_major_formatter(mticker.FuncFormatter(mydate))
     ax9.grid(True,color='grey', linestyle='-', which='major', axis='both',linewidth=0.3)
     ax9.tick_params(axis='x', which='major',labelsize=10 )
+    
+
+
+    
 
 #%%
 

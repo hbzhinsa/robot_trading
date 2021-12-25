@@ -7,8 +7,10 @@ from bs4 import BeautifulSoup
 
 #https://www.youtube.com/watch?v=q_MWWVgghsQ&t=151s
 # very good tutorial
-
 #
+# 
+url_mining_difficulty='https://www.coinwarz.com/charts/difficulty-charts'
+url_top_profit='https://www.coinwarz.com/cryptocurrency?sort=profitusd&dir=desc'
 def real_time_price(crypto_name='btc'):
     def crypto(name):
         name=name.lower()
@@ -20,7 +22,10 @@ def real_time_price(crypto_name='btc'):
                 'xpr':'https://www.investing.com/crypto/xrp/xrp-usd',
                 'ada':'https://www.investing.com/crypto/cardano/ada-usd',
                 'etc':'https://www.investing.com/crypto/ethereum-classic/etc-usd',
-                'doge':'https://www.investing.com/crypto/dogecoin/doge-usd'
+                'doge':'https://www.investing.com/crypto/dogecoin/doge-usd',
+                'sol': 'https://www.investing.com/crypto/solana/sol-usd',
+                'bch':'https://www.investing.com/crypto/bitcoin-cash/bch-usd', 
+                'zec':'https://www.investing.com/crypto/zcash/zec-usd'
              }
         return switcher.get(name,"will be added if needed")
     url=crypto(crypto_name)
@@ -31,8 +36,10 @@ def real_time_price(crypto_name='btc'):
     change=soup.find('div', {'class': class_name}).find_all('span')[1].text
     change_percent=soup.find('div', {'class': class_name}).find_all('span')[2].text
     volume=soup.find('div', {'data-test':'volume-value'}).text
-    class_name='datatable_cell__3gwri datatable_cell--up__2984w instrument-tech-summary_table-cell__2JiYj'
-    advice_MA15min=soup.find('td', {'class': class_name}).text
+    #class_name='datatable_cell__3gwri datatable_cell--up__2984w instrument-tech-summary_table-cell__2JiYj'
+    class_name='datatable_cell__3gwri datatable_cell--down__2CL8n instrument-tech-summary_table-cell__2JiYj'
+    advice=soup.find('tr', {'data-test':"instrument-tech-table-row" })
+    advice_MA15min=advice.find_all('td')[2].text
     price_range=soup.find('div', {'data-test':'range-value'}).text
     return [crypto_name,  price, [change+' '+(change_percent)], volume, advice_MA15min, price_range] 
 
